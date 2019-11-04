@@ -2,24 +2,6 @@
 #![warn(missing_docs, missing_debug_implementations)]
 #![deny(unused_extern_crates)]
 
-#[cfg(feature = "serdejson")]
-extern crate serde;
-#[cfg(feature = "serdejson")]
-extern crate serde_json;
-#[cfg(feature = "serdejson")]
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
-
-extern crate base64;
-extern crate chrono;
-extern crate futures;
-extern crate hyper;
-extern crate hyper_old_types;
-#[cfg(feature = "multipart")]
-extern crate mime;
-extern crate uuid;
-
 use std::error;
 use std::fmt;
 
@@ -36,24 +18,12 @@ pub use auth::{AuthData, Authorization};
 
 pub mod context;
 pub use context::{
-    ContextBuilder, ContextWrapper, ContextualPayload, EmptyContext, Has, Pop, Push,
+    ContextBuilder, ContextWrapper, EmptyContext, Has, Pop, Push,
 };
-
-/// Module to support client middleware
-pub mod client;
 
 /// Module with utilities for creating connectors with hyper.
 pub mod connector;
 pub use connector::{http_connector, https_connector, https_mutual_connector};
-
-pub mod composites;
-pub use composites::{CompositeMakeService, CompositeService, NotFound};
-
-pub mod add_context;
-pub use add_context::{AddContextMakeService, AddContextService};
-
-pub mod drop_context;
-pub use drop_context::{DropContextMakeService, DropContextService};
 
 pub mod request_parser;
 pub use request_parser::RequestParser;
