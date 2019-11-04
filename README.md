@@ -1,4 +1,4 @@
-# swagger-rs
+# openapi-context
 
 [![Build Status](https://travis-ci.org/Metaswitch/swagger-rs.svg?branch=master)](https://travis-ci.org/Metaswitch/swagger-rs)
 [![crates.io](https://img.shields.io/crates/v/swagger.svg)](https://crates.io/crates/swagger)
