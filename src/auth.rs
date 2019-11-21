@@ -1,12 +1,7 @@
 //! Authentication and authorization data structures
 
 use crate::Push;
-use hyper::header::AUTHORIZATION;
 use hyper::HeaderMap;
-pub use hyper_old_types::header::Authorization as Header;
-use hyper_old_types::header::Header as HeaderTrait;
-pub use hyper_old_types::header::{Basic, Bearer};
-use hyper_old_types::header::{Raw, Scheme};
 use std::collections::BTreeSet;
 use std::string::ToString;
 
@@ -49,9 +44,9 @@ pub struct Authorization {
 #[derive(Clone, Debug, PartialEq)]
 pub enum AuthData {
     /// HTTP Basic auth.
-    Basic(Basic),
+    Basic(headers::Authorization<headers::authorization::Basic>),
     /// HTTP Bearer auth, used for OAuth2.
-    Bearer(Bearer),
+    Bearer(headers::Authorization<headers::authorization::Bearer>),
     /// Header-based or query parameter-based API key auth.
     ApiKey(String),
 }
@@ -59,17 +54,15 @@ pub enum AuthData {
 impl AuthData {
     /// Set Basic authentication
     pub fn basic(username: &str, password: &str) -> Self {
-        AuthData::Basic(Basic {
-            username: username.to_owned(),
-            password: Some(password.to_owned()),
-        })
+        AuthData::Basic(headers::Authorization::basic(
+            username,
+            password,
+        ))
     }
 
     /// Set Bearer token authentication
     pub fn bearer(token: &str) -> Self {
-        AuthData::Bearer(Bearer {
-            token: token.to_owned(),
-        })
+        AuthData::Bearer(headers::Authorization::bearer(token).unwrap())
     }
 
     /// Set ApiKey authentication
@@ -82,19 +75,6 @@ impl AuthData {
 pub trait RcBound: Push<Option<Authorization>> + Send + 'static {}
 
 impl<T> RcBound for T where T: Push<Option<Authorization>> + Send + 'static {}
-
-/// Retrieve an authorization scheme data from a set of headers
-pub fn from_headers<S: Scheme>(headers: &HeaderMap) -> Option<S>
-where
-    S: std::str::FromStr + 'static,
-    S::Err: 'static,
-{
-    headers
-        .get(AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|s| Header::<S>::parse_header(&Raw::from(s)).ok())
-        .map(|a| a.0)
-}
 
 /// Retrieve an API key from a header
 pub fn api_key_from_header(headers: &HeaderMap, header: &str) -> Option<String> {

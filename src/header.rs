@@ -1,11 +1,17 @@
 use chrono::{DateTime, Utc};
-use hyper::header::HeaderValue;
+use headers::{HeaderValue, HeaderName, Header, HeaderMapExt};
+use lazy_static::lazy_static;
+use std::convert::TryFrom;
 use std::fmt;
 use std::ops::Deref;
 use uuid::Uuid;
 
 /// Header - `X-Span-ID` - used to track a request through a chain of microservices.
 pub const X_SPAN_ID: &str = "X-Span-ID";
+
+lazy_static! {
+    pub static ref X_SPAN_ID_HEADER: HeaderName = HeaderName::from_static(X_SPAN_ID);
+}
 
 /// Wrapper for a string being used as an X-Span-ID.
 #[derive(Debug, Clone)]
@@ -15,12 +21,39 @@ impl XSpanIdString {
     /// Extract an X-Span-ID from a request header if present, and if not
     /// generate a new one.
     pub fn get_or_generate<T>(req: &hyper::Request<T>) -> Self {
-        let x_span_id = req.headers().get(X_SPAN_ID);
+        let x_span_id = req.headers().typed_get::<XSpanIdString>();
 
         match x_span_id {
-            Some(x) => XSpanIdString(x.to_str().unwrap().to_string()),
+            Some(ref x) => x.clone(),
             None => Self::default(),
         }
+    }
+}
+
+impl Header for XSpanIdString {
+    fn name() -> &'static HeaderName {
+        &X_SPAN_ID_HEADER
+    }
+
+    fn decode<'i, I>(values: &mut I) -> Result<Self, headers::Error>
+        where
+            I: Iterator<Item = &'i HeaderValue>,
+    {
+        let value = values
+            .next()
+            .ok_or_else(headers::Error::invalid)?;
+
+        let value = value.to_str().map_err(|_| headers::Error::invalid())?;
+        Ok(XSpanIdString(value.to_owned()))
+    }
+
+    fn encode<E>(&self, values: &mut E)
+        where
+            E: Extend<HeaderValue>,
+    {
+        let value = HeaderValue::from_str(&self.0.to_string()).unwrap();
+
+        values.extend(std::iter::once(value));
     }
 }
 
@@ -56,15 +89,18 @@ impl<T> Deref for IntoHeaderValue<T> {
 
 macro_rules! ihv_generate {
     ($t:ident) => {
-        impl From<HeaderValue> for IntoHeaderValue<$t> {
-            fn from(hdr_value: HeaderValue) -> Self {
-                IntoHeaderValue(hdr_value.to_str().unwrap().parse::<$t>().unwrap())
+        impl std::convert::TryFrom<HeaderValue> for IntoHeaderValue<$t> {
+            type Error = headers::Error;
+            fn try_from(hdr_value: HeaderValue) -> Result<Self, Self::Error> {
+                let value = hdr_value.to_str().map_err(|_| headers::Error::invalid())?;
+                let value = value.parse().map_err(|_| headers::Error::invalid())?;
+                Ok(IntoHeaderValue(value))
             }
         }
 
-        impl From<IntoHeaderValue<$t>> for HeaderValue {
-            fn from(hdr_value: IntoHeaderValue<$t>) -> Self {
-                hdr_value.0.into()
+        impl Into<HeaderValue> for IntoHeaderValue<$t> {
+            fn into(self) -> HeaderValue {
+                HeaderValue::from_str(&self.0.to_string()).unwrap()
             }
         }
     };
@@ -81,52 +117,60 @@ ihv_generate!(i32);
 
 // Custom derivations
 
-impl From<HeaderValue> for IntoHeaderValue<Vec<String>> {
-    fn from(hdr_value: HeaderValue) -> Self {
-        IntoHeaderValue(
+impl TryFrom<HeaderValue> for IntoHeaderValue<Vec<String>> {
+    type Error = headers::Error;
+    fn try_from(hdr_value: HeaderValue) -> Result<Self, Self::Error> {
+        Ok(IntoHeaderValue(
             hdr_value
                 .to_str()
-                .unwrap()
+                .map_err(|_| headers::Error::invalid())?
                 .split(',')
                 .filter_map(|x| match x.trim() {
                     "" => None,
                     y => Some(y.to_string()),
                 })
                 .collect(),
-        )
+        ))
     }
 }
 
-impl From<IntoHeaderValue<Vec<String>>> for HeaderValue {
-    fn from(hdr_value: IntoHeaderValue<Vec<String>>) -> Self {
-        HeaderValue::from_str(&hdr_value.0.join(", ")).unwrap()
+impl Into<HeaderValue> for IntoHeaderValue<Vec<String>> {
+    fn into(self) -> HeaderValue {
+        HeaderValue::from_str(&self.0.join(", ")).unwrap()
     }
 }
 
-impl From<HeaderValue> for IntoHeaderValue<String> {
-    fn from(hdr_value: HeaderValue) -> Self {
-        IntoHeaderValue(hdr_value.to_str().unwrap().to_string())
+impl TryFrom<HeaderValue> for IntoHeaderValue<String> {
+    type Error = headers::Error;
+    fn try_from(hdr_value: HeaderValue) -> Result<Self, Self::Error> {
+        let v = hdr_value
+            .to_str()
+            .map_err(|_| headers::Error::invalid())?
+            .to_string();
+        Ok(IntoHeaderValue(v))
     }
 }
 
-impl From<IntoHeaderValue<String>> for HeaderValue {
-    fn from(hdr_value: IntoHeaderValue<String>) -> Self {
-        HeaderValue::from_str(&hdr_value.0).unwrap()
+impl Into<HeaderValue> for IntoHeaderValue<String> {
+    fn into(self) -> HeaderValue {
+        HeaderValue::from_str(&self.0).unwrap()
     }
 }
 
-impl From<HeaderValue> for IntoHeaderValue<DateTime<Utc>> {
-    fn from(hdr_value: HeaderValue) -> Self {
-        IntoHeaderValue(
-            DateTime::parse_from_rfc3339(hdr_value.to_str().unwrap())
-                .unwrap()
-                .with_timezone(&Utc),
-        )
+impl TryFrom<HeaderValue> for IntoHeaderValue<DateTime<Utc>> {
+    type Error = headers::Error;
+    fn try_from(hdr_value: HeaderValue) -> Result<Self, Self::Error> {
+        let v = hdr_value.to_str().map_err(|_| headers::Error::invalid())?;
+        Ok(IntoHeaderValue(
+            DateTime::parse_from_rfc3339(v)
+                .map_err(|_| headers::Error::invalid())?
+                .with_timezone(&Utc)
+        ))
     }
 }
 
-impl From<IntoHeaderValue<DateTime<Utc>>> for HeaderValue {
-    fn from(hdr_value: IntoHeaderValue<DateTime<Utc>>) -> Self {
-        HeaderValue::from_str(hdr_value.0.to_rfc3339().as_str()).unwrap()
+impl Into<HeaderValue> for IntoHeaderValue<DateTime<Utc>> {
+    fn into(self) -> HeaderValue {
+        HeaderValue::from_str(self.0.to_rfc3339().as_str()).unwrap()
     }
 }

@@ -29,7 +29,7 @@ pub mod request_parser;
 pub use request_parser::RequestParser;
 
 mod header;
-pub use header::{IntoHeaderValue, XSpanIdString, X_SPAN_ID};
+pub use header::{IntoHeaderValue, XSpanIdString};
 
 #[cfg(feature = "multipart")]
 pub mod multipart;
