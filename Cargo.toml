@@ -24,13 +24,13 @@ mime = { version = "0.3", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 lazy_static = "1.4"
-headers = "0.2"
-hyper = "0.12.25"
-hyper-tls = "0.2.1"
-native-tls = "0.1.4"
-openssl = "0.9.14"
+headers = "0.3"
+hyper = "0.13"
+hyper-tls = "0.4"
+native-tls = "0.2"
+openssl = "0.10"
 slog = { version = "2", features = [ "max_level_trace", "release_max_level_debug"] }
-futures = "0.1"
+futures = "0.3"
 uuid = {version = "0.7", features = ["serde", "v4"]}
-chrono = "0.4.6"
+chrono = "0.4"
 

@@ -6,7 +6,7 @@ use hyper;
 /// Returns a function which creates an http-connector. Used for instantiating
 /// clients with custom connectors
 pub fn http_connector() -> Box<dyn Fn() -> hyper::client::HttpConnector + Send + Sync> {
-    Box::new(move || hyper::client::HttpConnector::new(4))
+    Box::new(move || hyper::client::HttpConnector::new())
 }
 
 /// Returns a function which creates an https-connector
@@ -32,7 +32,7 @@ where
 
         let builder: native_tls::TlsConnectorBuilder =
             native_tls::backend::openssl::TlsConnectorBuilderExt::from_openssl(ssl);
-        let mut connector = hyper::client::HttpConnector::new(4);
+        let mut connector = hyper::client::HttpConnector::new();
         connector.enforce_http(false);
         let connector: hyper_tls::HttpsConnector<hyper::client::HttpConnector> =
             (connector, builder.build().unwrap()).into();
