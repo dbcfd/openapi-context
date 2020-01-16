@@ -15,13 +15,13 @@ lazy_static! {
 
 /// Wrapper for a string being used as an X-Span-ID.
 #[derive(Debug, Clone)]
-pub struct XSpanIdString(pub String);
+pub struct XSpanId(pub String);
 
-impl XSpanIdString {
+impl XSpanId {
     /// Extract an X-Span-ID from a request header if present, and if not
     /// generate a new one.
     pub fn get_or_generate<T>(req: &hyper::Request<T>) -> Self {
-        let x_span_id = req.headers().typed_get::<XSpanIdString>();
+        let x_span_id = req.headers().typed_get::<XSpanId>();
 
         match x_span_id {
             Some(ref x) => x.clone(),
@@ -30,7 +30,7 @@ impl XSpanIdString {
     }
 }
 
-impl Header for XSpanIdString {
+impl Header for XSpanId {
     fn name() -> &'static HeaderName {
         &X_SPAN_ID_HEADER
     }
@@ -44,7 +44,7 @@ impl Header for XSpanIdString {
             .ok_or_else(headers::Error::invalid)?;
 
         let value = value.to_str().map_err(|_| headers::Error::invalid())?;
-        Ok(XSpanIdString(value.to_owned()))
+        Ok(XSpanId(value.to_owned()))
     }
 
     fn encode<E>(&self, values: &mut E)
@@ -57,13 +57,13 @@ impl Header for XSpanIdString {
     }
 }
 
-impl Default for XSpanIdString {
+impl Default for XSpanId {
     fn default() -> Self {
-        XSpanIdString(Uuid::new_v4().to_string())
+        XSpanId(Uuid::new_v4().to_string())
     }
 }
 
-impl fmt::Display for XSpanIdString {
+impl fmt::Display for XSpanId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

@@ -6,7 +6,7 @@
 //!
 //! See the `context_tests` module below for examples of how to use.
 
-use crate::XSpanIdString;
+use crate::XSpanId;
 use crate::auth::{AuthData, Authorization};
 use std::marker::Sized;
 
@@ -387,7 +387,7 @@ macro_rules! new_context_type {
 new_context_type!(
     ContextBuilder,
     EmptyContext,
-    XSpanIdString,
+    XSpanId,
     Option<AuthData>,
     Option<Authorization>
 );
