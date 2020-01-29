@@ -512,6 +512,17 @@ where
     }
 }
 
+/// This represents context provided as part of the request or the response
+#[derive(Debug)]
+pub struct ContextualPayload<Ctx>
+    where Ctx: Send + 'static,
+{
+    /// The inner payload for this request/response
+    pub inner: hyper::Request<hyper::Body>,
+    /// Request or Response Context
+    pub context: Ctx,
+}
+
 #[cfg(test)]
 mod context_tests {
     use super::*;

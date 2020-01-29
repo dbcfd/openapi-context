@@ -1,9 +1,11 @@
 //! Authentication and authorization data structures
 
-use crate::Push;
+use crate::{Push, XSpanId, ContextualPayload};
 use hyper::HeaderMap;
 use std::collections::BTreeSet;
 use std::string::ToString;
+use std::marker::PhantomData;
+use std::task::{Context, Poll};
 
 /// Authorization scopes.
 #[derive(Clone, Debug, PartialEq)]
@@ -82,4 +84,80 @@ pub fn api_key_from_header(headers: &HeaderMap, header: &str) -> Option<String> 
         .get(header)
         .and_then(|v| v.to_str().ok())
         .map(ToString::to_string)
+}
+
+#[derive(Debug)]
+pub struct AllowAllAuthenticatorMakeService {
+    subject: String,
+}
+
+impl AllowAllAuthenticatorMakeService {
+    /// Create a new AddContextMakeService struct wrapping a value
+    pub fn new<T: Into<String>>(subject: T) -> Self {
+        AllowAllAuthenticatorMakeService {
+            subject: subject.into(),
+        }
+    }
+}
+
+impl<T, C> hyper::service::Service<T> for AllowAllAuthenticatorMakeService {
+    type Response = AllowAllAuthenticator<T, C>;
+    type Error = std::io::Error;
+    type Future = futures::future::Ready<Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, inner: T) -> Self::Future {
+        futures::future::ok(AllowAllAuthenticator::new(inner))
+    }
+}
+
+/// Middleware wrapper service, that should be used as the outermost layer in a
+/// stack of hyper services. Adds a context to a plain `hyper::Request` that can be
+/// used by subsequent layers in the stack. The `AddContextService` struct should
+/// not usually be used directly - when constructing a hyper stack use
+/// `AddContextMakeService`, which will create `AddContextService` instances as needed.
+#[derive(Debug)]
+pub struct AllowAllAuthenticator<T, C> {
+    inner: T,
+    subject: String,
+    marker: PhantomData<C>,
+}
+
+impl<T, C> AllowAllAuthenticator<T, C> {
+    /// Create a new AddContextService struct wrapping a value
+    pub fn new<U: Into<String>>(subject: U) -> Self {
+        AllowAllAuthenticator {
+            inner: inner,
+            subject: subject.into(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T, C> hyper::service::Service<ContextualPayload<C>> for AllowAllAuthenticator<T, C>
+    where
+        C: Default + Push<XSpanId> + Send + Sync + 'static,
+        C::Result: Send + Sync + 'static,
+        T: hyper::service::Service<ContextualPayload<C::Result>>,
+{
+    type Response = T::Response;
+    type Error = T::Error;
+    type Future = T::Future;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, req: ContextualPayload<C>) -> Self::Future {
+        let x_span_id = XSpanId::get_or_generate(&req.inner);
+        let context = C::default().push(x_span_id);
+
+        self.inner.call(ContextualPayload {
+            inner: req.inner,
+            context: context,
+        })
+    }
 }

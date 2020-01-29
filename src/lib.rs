@@ -18,12 +18,18 @@ pub use auth::{AuthData, Authorization};
 
 pub mod context;
 pub use context::{
-    ContextBuilder, ContextWrapper, EmptyContext, Has, Pop, Push,
+    ContextBuilder, ContextWrapper, ContextualPayload, EmptyContext, Has, Pop, Push,
 };
+
+pub mod add_context;
+pub use add_context::{AddContextMakeService, AddContextService};
 
 /// Module with utilities for creating connectors with hyper.
 pub mod connector;
 pub use connector::{http_connector, https_connector, https_mutual_connector};
+
+pub mod drop_context;
+pub use drop_context::{DropContextMakeService, DropContextService};
 
 pub mod request_parser;
 pub use request_parser::RequestParser;
