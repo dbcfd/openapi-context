@@ -30,16 +30,20 @@ use std::task::{Context, Poll};
 /// composite_new_service.push(("/base/path/3", DropContextMakeService::new(plain_service)));
 /// ```
 #[derive(Debug)]
-pub struct DropContextMakeService {}
+pub struct DropContextMakeService<C> {
+    phantom: PhantomData<C>,
+}
 
-impl DropContextMakeService {
+impl<C> DropContextMakeService<C> {
     /// Create a new DropContextMakeService struct wrapping a value
     pub fn new() -> Self {
-        DropContextMakeService { }
+        DropContextMakeService {
+            phantom: PhantomData,
+        }
     }
 }
 
-impl<T, C> hyper::service::Service<T> for DropContextMakeService {
+impl<T, C> hyper::service::Service<T> for DropContextMakeService<C> {
     type Response = DropContextService<T, C>;
     type Error = std::io::Error;
     type Future = futures::future::Ready<Result<Self::Response, Self::Error>>;

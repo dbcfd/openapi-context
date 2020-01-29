@@ -86,21 +86,25 @@ pub fn api_key_from_header(headers: &HeaderMap, header: &str) -> Option<String> 
         .map(ToString::to_string)
 }
 
+/// Dummy Authenticator, that blindly inserts authorization data, allowing all
+/// access to an endpoint with the specified subject.
 #[derive(Debug)]
-pub struct AllowAllAuthenticatorMakeService {
+pub struct AllowAllAuthenticatorMakeService<C> {
     subject: String,
+    phantom: PhantomData<C>,
 }
 
-impl AllowAllAuthenticatorMakeService {
+impl<C> AllowAllAuthenticatorMakeService<C> {
     /// Create a new AddContextMakeService struct wrapping a value
     pub fn new<T: Into<String>>(subject: T) -> Self {
         AllowAllAuthenticatorMakeService {
             subject: subject.into(),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T, C> hyper::service::Service<T> for AllowAllAuthenticatorMakeService {
+impl<T, C> hyper::service::Service<T> for AllowAllAuthenticatorMakeService<C> {
     type Response = AllowAllAuthenticator<T, C>;
     type Error = std::io::Error;
     type Future = futures::future::Ready<Result<Self::Response, Self::Error>>;
@@ -110,7 +114,7 @@ impl<T, C> hyper::service::Service<T> for AllowAllAuthenticatorMakeService {
     }
 
     fn call(&mut self, inner: T) -> Self::Future {
-        futures::future::ok(AllowAllAuthenticator::new(inner))
+        futures::future::ok(AllowAllAuthenticator::new(inner, self.subject.clone()))
     }
 }
 
@@ -128,7 +132,7 @@ pub struct AllowAllAuthenticator<T, C> {
 
 impl<T, C> AllowAllAuthenticator<T, C> {
     /// Create a new AddContextService struct wrapping a value
-    pub fn new<U: Into<String>>(subject: U) -> Self {
+    pub fn new<U: Into<String>>(inner: T, subject: U) -> Self {
         AllowAllAuthenticator {
             inner: inner,
             subject: subject.into(),

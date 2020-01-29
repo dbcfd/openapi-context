@@ -9,16 +9,20 @@ use std::task::{Context, Poll};
 /// stack of hyper services. Adds a context to a plain `hyper::Request` that can be
 /// used by subsequent layers in the stack.
 #[derive(Debug)]
-pub struct AddContextMakeService {}
+pub struct AddContextMakeService<C> {
+    phantom: PhantomData<C>
+}
 
-impl AddContextMakeService {
+impl<C> AddContextMakeService<C> {
     /// Create a new AddContextMakeService struct wrapping a value
     pub fn new() -> Self {
-        AddContextMakeService {}
+        AddContextMakeService {
+            phantom: PhantomData,
+        }
     }
 }
 
-impl<T, C> hyper::service::Service<T> for AddContextMakeService {
+impl<T, C> hyper::service::Service<T> for AddContextMakeService<C> {
     type Response = AddContextService<T, C>;
     type Error = std::io::Error;
     type Future = futures::future::Ready<Result<Self::Response, Self::Error>>;
