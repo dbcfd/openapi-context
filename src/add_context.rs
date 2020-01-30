@@ -57,7 +57,7 @@ impl<T, C> AddContextService<T, C> {
     }
 }
 
-impl<T, C> hyper::service::Service<ContextualPayload<C>> for AddContextService<T, C>
+impl<T, C> hyper::service::Service<hyper::Request<hyper::Body>> for AddContextService<T, C>
     where
         C: Default + Push<XSpanId> + Send + Sync + 'static,
         C::Result: Send + Sync + 'static,
@@ -71,12 +71,12 @@ impl<T, C> hyper::service::Service<ContextualPayload<C>> for AddContextService<T
         Ok(()).into()
     }
 
-    fn call(&mut self, req: ContextualPayload<C>) -> Self::Future {
-        let x_span_id = XSpanId::get_or_generate(&req.inner);
+    fn call(&mut self, req: hyper::Request<hyper::Body>) -> Self::Future {
+        let x_span_id = XSpanId::get_or_generate(&req);
         let context = C::default().push(x_span_id);
 
         self.inner.call(ContextualPayload {
-            inner: req.inner,
+            inner: req,
             context: context,
         })
     }
