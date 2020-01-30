@@ -1,6 +1,6 @@
 //! Authentication and authorization data structures
 
-use crate::{Push, XSpanId, ContextualPayload};
+use crate::{Push, ContextualPayload};
 use hyper::HeaderMap;
 use std::collections::BTreeSet;
 use std::string::ToString;
@@ -74,9 +74,9 @@ impl AuthData {
 }
 
 /// Bound for Request Context for MakeService wrappers
-pub trait RcBound: Push<Option<Authorization>> + Send + 'static {}
+pub trait RcBound: Push<Option<Authorization>> + Send + Sync + 'static {}
 
-impl<T> RcBound for T where T: Push<Option<Authorization>> + Send + 'static {}
+impl<T> RcBound for T where T: Push<Option<Authorization>> + Send + Sync + 'static {}
 
 /// Retrieve an API key from a header
 pub fn api_key_from_header(headers: &HeaderMap, header: &str) -> Option<String> {
@@ -143,7 +143,7 @@ impl<T, C> AllowAllAuthenticator<T, C> {
 
 impl<T, C> hyper::service::Service<ContextualPayload<C>> for AllowAllAuthenticator<T, C>
     where
-        C: Default + Push<XSpanId> + Send + Sync + 'static,
+        C: RcBound,
         C::Result: Send + Sync + 'static,
         T: hyper::service::Service<ContextualPayload<C::Result>>,
 {
@@ -156,8 +156,12 @@ impl<T, C> hyper::service::Service<ContextualPayload<C>> for AllowAllAuthenticat
     }
 
     fn call(&mut self, req: ContextualPayload<C>) -> Self::Future {
-        let x_span_id = XSpanId::get_or_generate(&req.inner);
-        let context = C::default().push(x_span_id);
+        let auth = Authorization {
+            subject: self.subject.clone(),
+            scopes: Scopes::All,
+            issuer: None,
+        };
+        let context = req.context.push(Some(auth));
 
         self.inner.call(ContextualPayload {
             inner: req.inner,
