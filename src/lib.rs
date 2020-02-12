@@ -24,10 +24,6 @@ pub use context::{
 pub mod add_context;
 pub use add_context::{AddContextMakeService, AddContextService};
 
-/// Module with utilities for creating connectors with hyper.
-pub mod connector;
-pub use connector::{http_connector, https_connector, https_mutual_connector};
-
 pub mod drop_context;
 pub use drop_context::{DropContextMakeService, DropContextService};
 
