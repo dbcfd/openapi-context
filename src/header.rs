@@ -6,19 +6,19 @@ use std::fmt;
 use std::ops::Deref;
 use uuid::Uuid;
 
-/// Header - `X-Span-ID` - used to track a request through a chain of microservices.
-pub const X_SPAN_ID: &str = "X-Span-ID";
+/// Header - `x-span-id` - used to track a request through a chain of microservices.
+pub const X_SPAN_ID: &str = "x-span-id";
 
 lazy_static! {
     pub static ref X_SPAN_ID_HEADER: HeaderName = HeaderName::from_static(X_SPAN_ID);
 }
 
-/// Wrapper for a string being used as an X-Span-ID.
+/// Wrapper for a string being used as an x-span-id.
 #[derive(Debug, Clone)]
 pub struct XSpanId(pub String);
 
 impl XSpanId {
-    /// Extract an X-Span-ID from a request header if present, and if not
+    /// Extract an x-span-id from a request header if present, and if not
     /// generate a new one.
     pub fn get_or_generate<T>(req: &hyper::Request<T>) -> Self {
         let x_span_id = req.headers().typed_get::<XSpanId>();
